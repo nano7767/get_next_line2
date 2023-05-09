@@ -6,7 +6,7 @@
 /*   By: svikornv <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/04/05 17:02:52 by svikornv          #+#    #+#             */
-/*   Updated: 2023/05/09 15:38:22 by svikornv         ###   ########.fr       */
+/*   Updated: 2023/05/09 17:00:55 by svikornv         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,17 +14,13 @@
 
 void	init_vars(t_vars *v)
 {
-	v->buf = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+	v->buf = (char *)malloc(sizeof(char) * BUFFER_SIZE + 1);
 	if (!v->buf)
-		return ;
-	v->buf[0] = '\0';
-	v->line = (char *)malloc(sizeof(char) * BUFFER_SIZE);
-	if (!v->line)
 	{
 		free(v->buf);
 		return ;
 	}
-	v->line[0] = '\0';
+	v->buf[0] = '\0';
 	v->nl_node = NULL;
 	v->nl_nodeth = 0;
 	v->nl_indx = -1;
@@ -35,13 +31,10 @@ void	init_vars(t_vars *v)
 
 void	add_to_stash(t_list **stash, t_vars *v)
 {
-	int	i;
 	t_list *new_node;
 	t_list	*ptr;
 	
 	new_node = generate_node(v->read_size);
-	if (!new_node)
-		return ;
 	ft_memcpy(new_node->content, v->buf, v->read_size);
 	new_node->content[v->read_size] = '\0';
 	ptr = *stash;
@@ -123,8 +116,6 @@ void	free_stash(t_list **stash, t_vars *v)
 		return ;
 	}
 	tmp = generate_node(v->total_len - ((v->nl_nodeth - 1) * BUFFER_SIZE) + v->nl_indx + 1);
-	if (!tmp)
-		return ;
 	ptr = *stash;
 	j = 0;
 	while (ptr)
@@ -153,7 +144,7 @@ char	*get_next_line(int fd)
 	{
 		v.read_size = read(fd, v.buf, BUFFER_SIZE);
 		if ((!stash && !v.read_size) || v.read_size == -1 || BUFFER_SIZE <= 0)
-			return (free(v.buf), free(v.line), NULL);
+			return (free(v.buf), NULL);
 		if (v.read_size == 0 && stash && contain_nl(stash, &v) == 0)
 		{
 			free(v.buf);
@@ -162,14 +153,12 @@ char	*get_next_line(int fd)
 		add_to_stash(&stash, &v);
 	}
 	line = extract_line(stash, &v);
-	if (!line)
-		return (NULL);
 	free_stash(&stash, &v);
 	if (line[0] == '\0')
 		return (free(line), NULL);
 	return (line);		
 }
-
+/*
 #include <fcntl.h>
 int	main(void)
 {
@@ -183,3 +172,4 @@ int	main(void)
 		printf("%s", s);
 	}
 }
+*/
