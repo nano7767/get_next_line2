@@ -6,7 +6,7 @@
 /*   By: svikornv <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/04/05 17:02:52 by svikornv          #+#    #+#             */
-/*   Updated: 2023/05/09 17:00:55 by svikornv         ###   ########.fr       */
+/*   Updated: 2023/05/12 14:18:21 by svikornv         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,33 +20,12 @@ void	init_vars(t_vars *v)
 		free(v->buf);
 		return ;
 	}
-	v->buf[0] = '\0';
 	v->nl_node = NULL;
 	v->nl_nodeth = 0;
 	v->nl_indx = -1;
 	v->node_count = 0;
-	v->node_len = 0;
+	v->lastndlen = 0;
 	v->total_len = 0;
-}
-
-void	add_to_stash(t_list **stash, t_vars *v)
-{
-	t_list *new_node;
-	t_list	*ptr;
-	
-	new_node = generate_node(v->read_size);
-	ft_memcpy(new_node->content, v->buf, v->read_size);
-	new_node->content[v->read_size] = '\0';
-	ptr = *stash;
-	if (!*stash)
-	{
-		*stash = new_node;
-		return ;
-	}
-	while (ptr->next)
-		ptr = ptr->next;
-	ptr->next = new_node;
-	v->node_count++;
 }
 
 int	contain_nl(t_list *stash, t_vars *v)
@@ -71,6 +50,34 @@ int	contain_nl(t_list *stash, t_vars *v)
 	return (0);
 }
 
+void	add_to_stash(t_list **stash, t_vars *v)
+{
+	t_list *new_node;
+	t_list	*ptr;
+	int	i;
+
+	i = 0;
+	new_node = generate_node(v->read_size);
+	while (i < v->read_size)
+	{
+		new_node->content[i] = v->buf[i];
+		i++;
+	}
+	if (i != 0)
+		v->lastndlen = i;
+	new_node->content[v->read_size] = '\0';
+	ptr = *stash;
+	if (*stash == NULL)
+	{
+		*stash = new_node;
+		return ;
+	}
+	while (ptr->next != NULL)
+		ptr = ptr->next;
+	ptr->next = new_node;
+	v->node_count++;
+}
+
 char	*extract_line(t_list *stash, t_vars *v)
 {
 	int		i;
@@ -78,9 +85,7 @@ char	*extract_line(t_list *stash, t_vars *v)
 	char	*line;
 	t_list	*ptr;
 
-	if (v->read_size != BUFFER_SIZE)
-		v->node_len = v->read_size;
-	v->total_len = (BUFFER_SIZE * v->node_count - 1) + v->node_len;
+	v->total_len = (BUFFER_SIZE * v->node_count - 1) + v->lastndlen;
 	line = (char *)malloc(sizeof(char) * (v->total_len + 1));
 	if (!line)
 		return (NULL);
@@ -94,7 +99,7 @@ char	*extract_line(t_list *stash, t_vars *v)
 		if (ptr->content[j] == '\n')
 		{
 			line[i++] = '\n';
-			break;
+			break ;
 		}
 		ptr = ptr->next;
 	}
@@ -115,7 +120,7 @@ void	free_stash(t_list **stash, t_vars *v)
 		clear_list(stash);
 		return ;
 	}
-	tmp = generate_node(v->total_len - ((v->nl_nodeth - 1) * BUFFER_SIZE) + v->nl_indx + 1);
+	tmp = generate_node(v->total_len - (((v->nl_nodeth - 1) * BUFFER_SIZE) + v->nl_indx + 1));
 	ptr = *stash;
 	j = 0;
 	while (ptr)
@@ -128,9 +133,8 @@ void	free_stash(t_list **stash, t_vars *v)
 	tmp->content[j] = '\0';
 	clear_list(stash);
 	*stash = tmp;
-	(*stash)->next = NULL;
 	v->node_count -= v->nl_nodeth;
-	v->node_len = v->total_len - ((v->node_count - 1) * BUFFER_SIZE);
+	v->lastndlen = v->total_len - ((v->node_count - 1) * BUFFER_SIZE);
 }
 
 char	*get_next_line(int fd)
